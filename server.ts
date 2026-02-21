@@ -278,7 +278,28 @@ Bun.serve({
       const apiKey =
         req.headers.get("x-api-key") || url.searchParams.get("api_key");
 
-      const authResult = await validateApiKey(apiKey);
+      // Allow unauthenticated access for discovery methods (initialize, tools/list)
+      // so directory scanners (Smithery, etc.) can inspect capabilities.
+      // Auth is still enforced for tools/call (see usage recording below).
+      let authResult: { valid: boolean; error?: string; tier?: string; name?: string } = { valid: false };
+      let isDiscoveryRequest = false;
+
+      if (req.method === "POST" && !apiKey) {
+        try {
+          const cloned = req.clone();
+          const body = await cloned.json();
+          const method = body?.method;
+          if (method === "initialize" || method === "tools/list" || method === "notifications/initialized") {
+            isDiscoveryRequest = true;
+            authResult = { valid: true, tier: "discovery", name: "scanner" };
+          }
+        } catch {}
+      }
+
+      if (!isDiscoveryRequest) {
+        authResult = await validateApiKey(apiKey);
+      }
+
       if (!authResult.valid) {
         return Response.json(
           {
@@ -297,12 +318,18 @@ Bun.serve({
         // Existing session — pass through to its transport
         const { transport } = transports[sessionId];
 
-        // Record usage for tool calls
-        if (req.method === "POST" && apiKey) {
+        // Record usage for tool calls and block unauthenticated tool calls
+        if (req.method === "POST") {
           try {
             const cloned = req.clone();
             const body = await cloned.json();
             if (body?.method === "tools/call") {
+              if (!apiKey) {
+                return Response.json(
+                  { jsonrpc: "2.0", error: { code: -32001, message: "API key required for tool calls. Get a free key at https://mcp.ezbizservices.com" }, id: body?.id || null },
+                  { status: 401 }
+                );
+              }
               await recordUsage(apiKey);
             }
           } catch {}
@@ -366,6 +393,12 @@ Bun.serve({
     }
 
     // --- Static files ---
+    // Serve sitemap and robots from static dir
+    if (url.pathname === "/sitemap.xml" || url.pathname === "/robots.txt") {
+      const staticRes = await serveStatic("/static" + url.pathname);
+      if (staticRes) return staticRes;
+    }
+
     if (url.pathname.startsWith("/static/") || url.pathname.startsWith("/.well-known/")) {
       const staticRes = await serveStatic(url.pathname);
       if (staticRes) return staticRes;
@@ -377,6 +410,11 @@ Bun.serve({
       "/docs": "docs.html",
       "/signup": "signup.html",
       "/pricing": "pricing.html",
+      "/blog/business-intelligence-mcp-server": "blog/business-intelligence-mcp-server.html",
+      "/tools/analyze-competitors": "tools/analyze-competitors.html",
+      "/tools/score-web-presence": "tools/score-web-presence.html",
+      "/tools/analyze-reviews": "tools/analyze-reviews.html",
+      "/tools/market-research": "tools/market-research.html",
     };
 
     const pageName = PAGE_ROUTES[url.pathname];
