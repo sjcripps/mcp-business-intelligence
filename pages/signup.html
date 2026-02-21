@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Get Your Free API Key — EzBiz Business Intelligence</title>
+  <meta name="description" content="Sign up for a free EzBiz Business Intelligence API key. 10 requests per month, all 4 tools included. No credit card required.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <a href="/" class="logo"><span>EzBiz</span> Business Intelligence</a>
+    <div class="nav-links">
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/signup" class="btn-nav">Get Free API Key</a>
+    </div>
+  </div>
+</nav>
+
+<section class="signup-section">
+  <div class="container">
+    <div class="signup-box">
+      <h2>Get your free API key</h2>
+      <p>10 requests/month. All 4 tools. No credit card required.</p>
+
+      <form id="signupForm" onsubmit="return handleSignup(event)">
+        <div class="form-group">
+          <label for="name">Name</label>
+          <input type="text" id="name" name="name" placeholder="Your name" required>
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="you@example.com" required>
+        </div>
+        <button type="submit" class="btn btn-primary" id="submitBtn">Create Free API Key</button>
+      </form>
+
+      <div class="error-msg" id="errorMsg"></div>
+
+      <div class="key-result" id="keyResult">
+        <h3>Your API Key</h3>
+        <div class="api-key" id="apiKeyDisplay" title="Click to copy"></div>
+        <p>Copy this key — it won't be shown again. See the <a href="/docs">docs</a> to connect.</p>
+      </div>
+    </div>
+
+    <div style="max-width:480px;margin:24px auto 0;text-align:center">
+      <p style="font-size:0.85rem;color:var(--text-light)">Need more than 10 requests/month? <a href="/pricing">View paid plans</a></p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>&copy; 2026 EzBiz Services. Built with MCP.</p>
+  </div>
+</footer>
+
+<script>
+async function handleSignup(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const errorMsg = document.getElementById('errorMsg');
+  const keyResult = document.getElementById('keyResult');
+  const form = document.getElementById('signupForm');
+
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+  errorMsg.style.display = 'none';
+  keyResult.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/keys/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim()
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Something went wrong');
+    }
+
+    document.getElementById('apiKeyDisplay').textContent = data.key;
+    keyResult.style.display = 'block';
+    form.style.display = 'none';
+
+    // Copy on click
+    document.getElementById('apiKeyDisplay').addEventListener('click', function() {
+      navigator.clipboard.writeText(this.textContent).then(() => {
+        const orig = this.textContent;
+        this.textContent = 'Copied!';
+        setTimeout(() => { this.textContent = orig; }, 1500);
+      });
+    });
+
+  } catch (err) {
+    errorMsg.textContent = err.message;
+    errorMsg.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Create Free API Key';
+  }
+}
+</script>
+
+</body>
+</html>

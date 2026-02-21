@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation — EzBiz Business Intelligence</title>
+  <meta name="description" content="Learn how to connect and use EzBiz Business Intelligence MCP tools. Quick start guide, tool reference, and API documentation.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <a href="/" class="logo"><span>EzBiz</span> Business Intelligence</a>
+    <div class="nav-links">
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/signup" class="btn-nav">Get Free API Key</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+      <h4>Getting Started</h4>
+      <a href="#quickstart" class="active">Quick Start</a>
+      <a href="#connection">Connection Setup</a>
+      <a href="#auth">Authentication</a>
+      <h4>Tools</h4>
+      <a href="#analyze-competitors">analyze_competitors</a>
+      <a href="#score-web-presence">score_web_presence</a>
+      <a href="#analyze-reviews">analyze_reviews</a>
+      <a href="#market-research">market_research</a>
+      <h4>API</h4>
+      <a href="#rest-api">REST API</a>
+      <a href="#rate-limits">Rate Limits</a>
+    </aside>
+
+    <main class="docs-content">
+      <h1>Documentation</h1>
+      <p>Everything you need to integrate EzBiz Business Intelligence into your AI workflow.</p>
+
+      <h2 id="quickstart">Quick Start</h2>
+      <p>Get up and running in under a minute:</p>
+      <ol>
+        <li><a href="/signup">Create a free API key</a> (no credit card required)</li>
+        <li>Add the server config to your MCP client</li>
+        <li>Ask your AI assistant to analyze a competitor, score a website, or research a market</li>
+      </ol>
+
+      <h2 id="connection">Connection Setup</h2>
+      <p>Add this configuration to your MCP client. Works with Claude Desktop, Cursor, Windsurf, VS Code with Copilot, and any MCP-compatible client.</p>
+
+      <h3>Claude Desktop / Cursor / Windsurf</h3>
+      <p>Add to your MCP settings file:</p>
+      <div class="code-block">
+{<br>
+&nbsp;&nbsp;<span class="key">"mcpServers"</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"ezbiz-business-intelligence"</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"url"</span>: <span class="string">"https://mcp.ezbizservices.com/mcp"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"headers"</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"X-API-Key"</span>: <span class="string">"your-api-key-here"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;}<br>
+}
+      </div>
+
+      <h3>Transport</h3>
+      <p>The server uses <strong>Streamable HTTP</strong> transport (the modern MCP standard). Your client connects to <code>https://mcp.ezbizservices.com/mcp</code> via POST requests.</p>
+
+      <h2 id="auth">Authentication</h2>
+      <p>Every request requires an API key passed as the <code>X-API-Key</code> header. Get your key from the <a href="/signup">signup page</a>.</p>
+      <table>
+        <tr><th>Header</th><th>Value</th></tr>
+        <tr><td><code>X-API-Key</code></td><td>Your API key (starts with <code>sk_biz_</code>)</td></tr>
+      </table>
+
+      <h2 id="analyze-competitors">Tool: analyze_competitors</h2>
+      <p>Analyzes the competitive landscape for a business. Returns competitor profiles, market positioning, SWOT analysis, and strategic recommendations.</p>
+      <h3>Parameters</h3>
+      <table>
+        <tr><th>Name</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td><code>business_name</code></td><td>string</td><td>Yes</td><td>Name of the business to analyze</td></tr>
+        <tr><td><code>industry</code></td><td>string</td><td>Yes</td><td>Industry or market sector (e.g., "SaaS", "local plumbing")</td></tr>
+        <tr><td><code>location</code></td><td>string</td><td>No</td><td>Geographic location for local businesses</td></tr>
+        <tr><td><code>website_url</code></td><td>string</td><td>No</td><td>The business's own website URL for comparison</td></tr>
+      </table>
+      <h3>Example Prompts</h3>
+      <ul>
+        <li>"Analyze competitors for Acme Plumbing in Austin, TX"</li>
+        <li>"Who are the main competitors for Shopify in the e-commerce platform space?"</li>
+        <li>"Compare my SaaS startup (myapp.com) against competitors in project management"</li>
+      </ul>
+
+      <h2 id="score-web-presence">Tool: score_web_presence</h2>
+      <p>Scores a website's online presence from 0-100 across five categories: SEO, performance, content quality, social media presence, and trust signals. Returns detailed breakdown and prioritized recommendations.</p>
+      <h3>Parameters</h3>
+      <table>
+        <tr><th>Name</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td><code>url</code></td><td>string</td><td>Yes</td><td>Website URL to analyze</td></tr>
+        <tr><td><code>business_name</code></td><td>string</td><td>No</td><td>Business name to check social media presence</td></tr>
+      </table>
+      <h3>Example Prompts</h3>
+      <ul>
+        <li>"Score the web presence of example.com"</li>
+        <li>"How strong is Apple's website from an SEO perspective?"</li>
+        <li>"Audit my website myshop.com and tell me what to fix"</li>
+      </ul>
+
+      <h2 id="analyze-reviews">Tool: analyze_reviews</h2>
+      <p>Analyzes a business's online reviews and reputation. Aggregates sentiment, extracts themes, identifies strengths and weaknesses, and provides review management recommendations.</p>
+      <h3>Parameters</h3>
+      <table>
+        <tr><th>Name</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td><code>business_name</code></td><td>string</td><td>Yes</td><td>Business name to search reviews for</td></tr>
+        <tr><td><code>location</code></td><td>string</td><td>No</td><td>Business location for local search</td></tr>
+        <tr><td><code>industry</code></td><td>string</td><td>No</td><td>Industry context for comparison</td></tr>
+      </table>
+      <h3>Example Prompts</h3>
+      <ul>
+        <li>"Analyze reviews for Joe's Pizza in Brooklyn, NY"</li>
+        <li>"What are customers saying about Zendesk?"</li>
+        <li>"Check the reputation of my dental practice, Bright Smiles Seattle"</li>
+      </ul>
+
+      <h2 id="market-research">Tool: market_research</h2>
+      <p>Conducts market research on an industry. Returns market sizing (TAM/SAM/SOM), trends, opportunities, challenges, customer segments, and competitive landscape analysis.</p>
+      <h3>Parameters</h3>
+      <table>
+        <tr><th>Name</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td><code>industry</code></td><td>string</td><td>Yes</td><td>Industry or market to research</td></tr>
+        <tr><td><code>question</code></td><td>string</td><td>No</td><td>Specific question to answer</td></tr>
+        <tr><td><code>location</code></td><td>string</td><td>No</td><td>Geographic focus for the research</td></tr>
+      </table>
+      <h3>Example Prompts</h3>
+      <ul>
+        <li>"Research the telemedicine market in the US"</li>
+        <li>"What's the TAM for residential solar in Texas?"</li>
+        <li>"Give me a market overview of the pet food industry"</li>
+      </ul>
+
+      <h2 id="rest-api">REST API</h2>
+      <p>In addition to the MCP protocol, the following REST endpoints are available:</p>
+      <table>
+        <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+        <tr><td><code>/api/keys/signup</code></td><td>POST</td><td>Create a free API key. Body: <code>{"name": "...", "email": "..."}</code></td></tr>
+        <tr><td><code>/api/keys/usage</code></td><td>GET</td><td>Check usage. Query: <code>?key=sk_biz_...</code></td></tr>
+        <tr><td><code>/api/pricing</code></td><td>GET</td><td>Get current pricing tiers</td></tr>
+        <tr><td><code>/health</code></td><td>GET</td><td>Server health check</td></tr>
+      </table>
+
+      <h2 id="rate-limits">Rate Limits</h2>
+      <p>Rate limits are applied per API key on a monthly basis. Usage resets on the 1st of each month (UTC).</p>
+      <table>
+        <tr><th>Tier</th><th>Requests/Month</th><th>Price</th></tr>
+        <tr><td>Free</td><td>10</td><td>$0</td></tr>
+        <tr><td>Starter</td><td>200</td><td>$19/mo</td></tr>
+        <tr><td>Pro</td><td>1,000</td><td>$49/mo</td></tr>
+        <tr><td>Business</td><td>5,000</td><td>$99/mo</td></tr>
+      </table>
+      <p>When you exceed your limit, you'll receive a clear error with your current usage and a link to upgrade.</p>
+
+    </main>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    <p>&copy; 2026 EzBiz Services. Built with MCP.</p>
+  </div>
+</footer>
+
+</body>
+</html>
