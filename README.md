@@ -1,76 +1,96 @@
-# EzBiz Business Intelligence MCP Server
+# BizIntel MCP Server
 
-AI-powered business intelligence tools via the Model Context Protocol (MCP).
+[![MCP](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Bun](https://img.shields.io/badge/runtime-Bun-black)](https://bun.sh)
+
+AI-powered business intelligence tools via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). Give your AI assistant the ability to research competitors, score websites, analyze reviews, and conduct market research — all in real time.
 
 ## Tools
 
-- **analyze_competitors** — Competitive landscape analysis with market positioning and strategic recommendations
-- **score_web_presence** — Website presence scoring (0-100) across SEO, performance, content, social, and trust
-- **analyze_reviews** — Online review aggregation with sentiment analysis and reputation insights
-- **market_research** — Industry research with market size, trends, opportunities, and customer segments
+| Tool | Description |
+|------|-------------|
+| `analyze_competitors` | Competitive landscape analysis with market positioning, SWOT insights, and strategic recommendations |
+| `score_web_presence` | Website presence scoring (0-100) across SEO, performance, content, social media, and trust signals |
+| `analyze_reviews` | Online review aggregation with sentiment analysis, theme extraction, and reputation insights |
+| `market_research` | Industry research with market sizing, trends, opportunities, and customer segment analysis |
 
-## Quick Start
+## Quick Start (Hosted)
+
+**No installation required.** Use the hosted version:
 
 1. Get a free API key at [mcp.ezbizservices.com/signup](https://mcp.ezbizservices.com/signup)
-2. Add to your MCP client config:
+2. Add to your MCP client config (Claude Desktop, Cursor, etc.):
 
 ```json
 {
   "mcpServers": {
-    "ezbiz-business-intelligence": {
+    "bizintel": {
       "url": "https://mcp.ezbizservices.com/mcp",
       "headers": {
-        "x-api-key": "your-api-key-here"
+        "x-api-key": "YOUR_API_KEY"
       }
     }
   }
 }
 ```
 
-3. Ask your AI assistant to analyze a business!
+3. Ask your AI assistant to analyze any business!
+
+### Example Prompts
+
+- "Analyze the competitive landscape for coffee shops in Austin, TX"
+- "Score the web presence of example.com"
+- "What do customers say about [Business Name] in their reviews?"
+- "Research the market opportunity for AI consulting services"
+
+## Self-Hosting
+
+```bash
+git clone https://github.com/sjcripps/mcp-business-intelligence.git
+cd mcp-business-intelligence
+bun install
+
+cp .env.example .env
+# Edit .env with your OpenAI API key and admin secret
+
+bun run server.ts
+```
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | Yes | OpenAI API key for AI-powered analysis |
+| `ADMIN_SECRET` | Yes | Secret for admin API endpoints |
+| `MCP_PORT` | No | Server port (default: 4200) |
 
 ## Pricing
 
 | Tier | Price | Requests/Month |
 |------|-------|----------------|
-| Free | $0 | 10 |
+| **Free** | $0 | 10 |
 | Starter | $19/mo | 200 |
 | Pro | $49/mo | 1,000 |
 | Business | $99/mo | 5,000 |
 
-Get your key at [mcp.ezbizservices.com](https://mcp.ezbizservices.com)
+Start free at [mcp.ezbizservices.com](https://mcp.ezbizservices.com)
 
-## Self-Hosting
+## Architecture
 
-```bash
-# Clone and install
-git clone https://github.com/sjcripps/ezbiz-bizintel-mcp.git
-cd ezbiz-bizintel-mcp
-bun install
+- **Runtime:** [Bun](https://bun.sh)
+- **Protocol:** [MCP SDK](https://www.npmjs.com/package/@modelcontextprotocol/sdk) (Streamable HTTP transport)
+- **AI:** OpenAI GPT-4o for analysis
+- **Scraping:** Cheerio for web data extraction
+- **Auth:** API key-based with tiered rate limiting
 
-# Configure
-cp .env.example .env
-# Edit .env with your OpenAI API key and admin secret
+## Links
 
-# Run
-bun run server.ts
-```
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `OPENAI_API_KEY` | Yes | OpenAI API key for AI analysis |
-| `ADMIN_SECRET` | Yes | Secret for admin API endpoints |
-| `MCP_PORT` | No | Port to run on (default: 4200) |
-
-## Tech Stack
-
-- [Bun](https://bun.sh) runtime
-- [MCP SDK](https://modelcontextprotocol.io) (@modelcontextprotocol/sdk)
-- OpenAI for analysis
-- Cheerio for web scraping
+- **Homepage:** [mcp.ezbizservices.com](https://mcp.ezbizservices.com)
+- **API Docs:** [mcp.ezbizservices.com/docs](https://mcp.ezbizservices.com/docs)
+- **Sign Up:** [mcp.ezbizservices.com/signup](https://mcp.ezbizservices.com/signup)
+- **Server Card:** [mcp.ezbizservices.com/.well-known/mcp/server-card.json](https://mcp.ezbizservices.com/.well-known/mcp/server-card.json)
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE)
