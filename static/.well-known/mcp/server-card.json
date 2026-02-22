@@ -4,25 +4,64 @@
     "description": "AI-powered business intelligence MCP server. Competitive analysis, web presence scoring, review analysis, and market research — available via the Model Context Protocol.",
     "version": "1.0.0",
     "homepage": "https://mcp.ezbizservices.com",
+    "repository": "https://github.com/sjcripps/mcp-business-intelligence",
+    "license": "MIT",
+    "icon": "https://raw.githubusercontent.com/sjcripps/mcp-business-intelligence/main/static/icon.svg",
     "transport": "streamable-http",
     "endpoint": "https://mcp.ezbizservices.com/mcp"
   },
   "tools": [
     {
       "name": "analyze_competitors",
-      "description": "Analyze the competitive landscape for a business. Returns competitor profiles, market positioning, strengths/weaknesses, and strategic recommendations."
+      "description": "Analyze the competitive landscape for a business. Returns competitor profiles, market positioning, strengths/weaknesses, and strategic recommendations.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["business_name", "industry"],
+        "properties": {
+          "business_name": { "type": "string", "description": "Name of the business to analyze" },
+          "industry": { "type": "string", "description": "Industry or market sector" },
+          "location": { "type": "string", "description": "Geographic location for local businesses" },
+          "website_url": { "type": "string", "format": "uri", "description": "Business website URL for comparison" }
+        }
+      }
     },
     {
       "name": "score_web_presence",
-      "description": "Score a website's online presence (0-100) across SEO, performance, content, social media, and trust signals."
+      "description": "Score a website's online presence (0-100) across SEO, performance, content, social media, and trust signals. Returns detailed breakdown and actionable recommendations.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["url"],
+        "properties": {
+          "url": { "type": "string", "description": "Website URL to analyze" },
+          "business_name": { "type": "string", "description": "Business name for brand mention analysis" }
+        }
+      }
     },
     {
       "name": "analyze_reviews",
-      "description": "Analyze a business's online reviews and reputation. Returns sentiment analysis, key themes, and recommendations."
+      "description": "Analyze a business's online reviews and reputation. Returns sentiment analysis, key themes, strengths, weaknesses, and review management recommendations.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["business_name"],
+        "properties": {
+          "business_name": { "type": "string", "description": "Business name to search reviews for" },
+          "location": { "type": "string", "description": "Business location for local search" },
+          "industry": { "type": "string", "description": "Industry context for comparison" }
+        }
+      }
     },
     {
       "name": "market_research",
-      "description": "Conduct market research on an industry. Returns market size, trends, opportunities, and customer segments."
+      "description": "Conduct market research on an industry. Returns market size, trends, opportunities, challenges, customer segments, competitive landscape, and strategic recommendations.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["industry"],
+        "properties": {
+          "industry": { "type": "string", "description": "Industry or market to research" },
+          "question": { "type": "string", "description": "Specific question to answer" },
+          "location": { "type": "string", "description": "Geographic focus for the research" }
+        }
+      }
     }
   ],
   "authentication": {

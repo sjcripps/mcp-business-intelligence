@@ -67,7 +67,7 @@ function createMcpServer(): McpServer {
     "analyze_competitors",
     "Analyze the competitive landscape for a business. Returns competitor profiles, market positioning, strengths/weaknesses, and strategic recommendations.",
     {
-      business_name: z.string().describe("Name of the business to analyze"),
+      business_name: z.string().describe("Name of the business to analyze (e.g., 'Acme Plumbing')"),
       industry: z
         .string()
         .describe("Industry or market sector (e.g., 'SaaS', 'local plumbing', 'e-commerce')"),
@@ -77,8 +77,9 @@ function createMcpServer(): McpServer {
         .describe("Geographic location for local businesses (e.g., 'Austin, TX')"),
       website_url: z
         .string()
+        .url()
         .optional()
-        .describe("The business's own website URL for comparison"),
+        .describe("The business's website URL for comparison (e.g., 'https://example.com')"),
     },
     async (params) => {
       const result = await analyzeCompetitors(params);
@@ -91,11 +92,11 @@ function createMcpServer(): McpServer {
     "score_web_presence",
     "Score a website's online presence (0-100) across SEO, performance, content, social media, and trust signals. Returns detailed breakdown and actionable recommendations.",
     {
-      url: z.string().describe("Website URL to analyze (e.g., 'example.com' or 'https://example.com')"),
+      url: z.string().describe("Website URL to analyze (e.g., 'https://example.com')"),
       business_name: z
         .string()
         .optional()
-        .describe("Business name to check social media presence"),
+        .describe("Business name to check social media presence and brand mentions"),
     },
     async (params) => {
       const result = await scoreWebPresence(params);
@@ -272,8 +273,8 @@ Bun.serve({
       }, { headers: corsHeaders });
     }
 
-    // MCP endpoint — delegate to WebStandard transport
-    if (url.pathname === "/mcp") {
+    // MCP endpoint — accept on /mcp and also on / for POST (Smithery/scanners)
+    if (url.pathname === "/mcp" || (url.pathname === "/" && req.method === "POST")) {
       // --- API key auth ---
       const apiKey =
         req.headers.get("x-api-key") || url.searchParams.get("api_key");
@@ -412,8 +413,11 @@ Bun.serve({
       "/pricing": "pricing.html",
       "/blog/business-intelligence-mcp-server": "blog/business-intelligence-mcp-server.html",
       "/tools/analyze-competitors": "tools/analyze-competitors.html",
+      "/tools/competitor-analysis": "tools/competitor-analysis.html",
       "/tools/score-web-presence": "tools/score-web-presence.html",
+      "/tools/web-presence-scoring": "tools/web-presence-scoring.html",
       "/tools/analyze-reviews": "tools/analyze-reviews.html",
+      "/tools/review-analysis": "tools/review-analysis.html",
       "/tools/market-research": "tools/market-research.html",
     };
 
