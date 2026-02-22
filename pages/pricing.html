@@ -7,17 +7,43 @@
   <meta name="description" content="EzBiz Business Intelligence pricing. Start free with 10 requests/month. Upgrade to Starter, Pro, or Business plans for more capacity.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 <body>
 
 <nav>
   <div class="container">
     <a href="/" class="logo"><span>EzBiz</span> Business Intelligence</a>
+    <button class="nav-toggle" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
     <div class="nav-links">
+      <button class="mega-trigger" type="button">Tools <svg class="caret" width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <a href="/docs">Docs</a>
       <a href="/pricing">Pricing</a>
       <a href="/signup" class="btn-nav">Get Free API Key</a>
+    </div>
+  </div>
+  <div class="mega-panel">
+    <div class="container">
+      <div class="mega-grid">
+        <a href="/tools/analyze-competitors" class="mega-card blue">
+          <div class="mega-name">Competitor Analysis</div>
+          <div class="mega-desc">Map competitive landscapes and positioning</div>
+        </a>
+        <a href="/tools/score-web-presence" class="mega-card purple">
+          <div class="mega-name">Web Presence Score</div>
+          <div class="mega-desc">Score any website 0-100 across key metrics</div>
+        </a>
+        <a href="/tools/analyze-reviews" class="mega-card green">
+          <div class="mega-name">Review Analysis</div>
+          <div class="mega-desc">Aggregate and analyze online reviews</div>
+        </a>
+        <a href="/tools/market-research" class="mega-card orange">
+          <div class="mega-name">Market Research</div>
+          <div class="mega-desc">Industry research with trends and segments</div>
+        </a>
+      </div>
     </div>
   </div>
 </nav>
@@ -33,10 +59,8 @@
         <div class="per">forever</div>
         <ul>
           <li>10 requests / month</li>
-          <li>Competitor Analysis</li>
-          <li>Web Presence Scoring</li>
-          <li>Review Analysis</li>
-          <li>Market Research</li>
+          <li>All 4 tools included</li>
+          <li>Community support</li>
         </ul>
         <a href="/signup" class="btn btn-secondary">Get Started</a>
       </div>
@@ -49,7 +73,7 @@
           <li>All 4 tools included</li>
           <li>Email support</li>
         </ul>
-        <a href="/signup" class="btn btn-secondary">Get Started</a>
+        <a href="https://jcstore3676.mysamcart.com/checkout/ezbiz-business-intelligence#samcart-slide-open-left" class="btn btn-secondary">Get Started</a>
       </div>
       <div class="pricing-card popular">
         <h3>Pro</h3>
@@ -58,10 +82,10 @@
         <ul>
           <li>1,000 requests / month</li>
           <li>All 4 tools included</li>
-          <li>Email support</li>
+          <li>Priority support</li>
           <li>Usage analytics</li>
         </ul>
-        <a href="/signup" class="btn btn-primary">Get Started</a>
+        <a href="https://jcstore3676.mysamcart.com/checkout/ezbiz-business-intelligence-u5itf#samcart-slide-open-left" class="btn btn-primary">Get Started</a>
       </div>
       <div class="pricing-card">
         <h3>Business</h3>
@@ -70,10 +94,10 @@
         <ul>
           <li>5,000 requests / month</li>
           <li>All 4 tools included</li>
-          <li>Email support</li>
+          <li>Dedicated support</li>
           <li>Usage analytics</li>
         </ul>
-        <a href="/signup" class="btn btn-secondary">Get Started</a>
+        <a href="https://jcstore3676.mysamcart.com/checkout/ezbiz-business-intelligence-sploa#samcart-slide-open-left" class="btn btn-secondary">Get Started</a>
       </div>
     </div>
   </div>
@@ -121,5 +145,66 @@
   </div>
 </footer>
 
+<script>
+(function(){
+  var trigger = document.querySelector('.mega-trigger');
+  var panel = document.querySelector('.mega-panel');
+  var toggle = document.querySelector('.nav-toggle');
+  var links = document.querySelector('.nav-links');
+  if (!trigger || !panel) return;
+
+  trigger.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    panel.classList.toggle('open');
+    trigger.classList.toggle('active');
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!panel.contains(e.target) && !trigger.contains(e.target)) {
+      panel.classList.remove('open');
+      trigger.classList.remove('active');
+    }
+    if (toggle && links && !links.contains(e.target) && !toggle.contains(e.target)) {
+      links.classList.remove('mobile-open');
+      toggle.classList.remove('open');
+    }
+  });
+
+  var hoverTimeout;
+  trigger.addEventListener('mouseenter', function() {
+    if (window.innerWidth > 768) {
+      clearTimeout(hoverTimeout);
+      panel.classList.add('open');
+      trigger.classList.add('active');
+    }
+  });
+  function scheduleClose() {
+    hoverTimeout = setTimeout(function() {
+      panel.classList.remove('open');
+      trigger.classList.remove('active');
+    }, 250);
+  }
+  trigger.addEventListener('mouseleave', function() {
+    if (window.innerWidth > 768) scheduleClose();
+  });
+  panel.addEventListener('mouseenter', function() {
+    if (window.innerWidth > 768) clearTimeout(hoverTimeout);
+  });
+  panel.addEventListener('mouseleave', function() {
+    if (window.innerWidth > 768) scheduleClose();
+  });
+
+  if (toggle && links) {
+    toggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggle.classList.toggle('open');
+      links.classList.toggle('mobile-open');
+      panel.classList.remove('open');
+      trigger.classList.remove('active');
+    });
+  }
+})();
+</script>
 </body>
 </html>
