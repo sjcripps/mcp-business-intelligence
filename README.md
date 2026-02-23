@@ -47,7 +47,7 @@ AI-powered business intelligence tools via the [Model Context Protocol (MCP)](ht
 ## Self-Hosting
 
 ```bash
-git clone https://github.com/sjcripps/mcp-business-intelligence.git
+git clone https://github.com/ezbiz-services/mcp-business-intelligence.git
 cd mcp-business-intelligence
 bun install
 

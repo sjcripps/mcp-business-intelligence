@@ -1,19 +1,19 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "com.ezbizservices/business-intelligence",
+  "name": "io.github.sjcripps/business-intelligence",
   "title": "EzBiz Business Intelligence",
-  "description": "AI-powered competitive analysis, web presence scoring, review analysis, and market research for any business or industry.",
+  "description": "AI business intelligence: competitor analysis, web scoring, reviews, market research",
   "version": "1.0.0",
   "websiteUrl": "https://mcp.ezbizservices.com",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/sjcripps/mcp-business-intelligence/main/static/icon.svg",
+      "src": "https://raw.githubusercontent.com/ezbiz-services/mcp-business-intelligence/main/static/icon.svg",
       "mimeType": "image/svg+xml",
       "sizes": ["200x200"]
     }
   ],
   "repository": {
-    "url": "https://github.com/sjcripps/mcp-business-intelligence",
+    "url": "https://github.com/ezbiz-services/mcp-business-intelligence",
     "source": "github"
   },
   "remotes": [

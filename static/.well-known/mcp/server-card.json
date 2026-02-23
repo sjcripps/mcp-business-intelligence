@@ -1,12 +1,12 @@
 {
   "serverInfo": {
     "name": "EzBiz Business Intelligence",
-    "description": "AI-powered business intelligence MCP server. Competitive analysis, web presence scoring, review analysis, and market research — available via the Model Context Protocol.",
+    "description": "AI-powered business intelligence MCP server for Claude, Cursor, Windsurf, and any MCP client. 4 tools: analyze competitors, score web presence (0-100), analyze customer reviews and reputation, conduct market research. Get actionable business insights powered by GPT-4o in real time. Free tier available — 10 API calls/month. Perfect for small business owners, agencies, and consultants. Built by EzBiz Services.",
     "version": "1.0.0",
     "homepage": "https://mcp.ezbizservices.com",
-    "repository": "https://github.com/sjcripps/mcp-business-intelligence",
+    "repository": "https://github.com/ezbiz-services/mcp-business-intelligence",
     "license": "MIT",
-    "icon": "https://raw.githubusercontent.com/sjcripps/mcp-business-intelligence/main/static/icon.svg",
+    "icon": "https://raw.githubusercontent.com/ezbiz-services/mcp-business-intelligence/main/static/icon.svg",
     "transport": "streamable-http",
     "endpoint": "https://mcp.ezbizservices.com/mcp"
   },

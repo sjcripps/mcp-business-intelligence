@@ -8,6 +8,7 @@ import { z } from "zod";
 import { validateApiKey, recordUsage, createApiKey, getKeyByEmail, upgradeKey, getKeyUsage, TIER_LIMITS, TIER_PRICES } from "./lib/auth";
 import type { Tier } from "./lib/auth";
 import { log } from "./lib/logger";
+import { handleOAuthRoute, unauthorizedResponse, type OAuthConfig } from "./lib/oauth";
 import { analyzeCompetitors } from "./tools/competitor-analysis";
 import { scoreWebPresence } from "./tools/web-presence-score";
 import { analyzeReviews } from "./tools/review-analysis";
@@ -182,13 +183,24 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
     // CORS headers for storefront
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-API-Key, X-Admin-Secret",
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key, X-Admin-Secret, Mcp-Session-Id, Accept",
+      "Access-Control-Expose-Headers": "Mcp-Session-Id",
     };
 
     if (req.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
+
+    // --- OAuth 2.0 + PKCE for MCP clients (Claude, etc.) ---
+    const oauthConfig: OAuthConfig = {
+      issuerUrl: "https://mcp.ezbizservices.com",
+      serverName: "EzBiz Business Intelligence",
+      validateKey: validateApiKey,
+      corsHeaders,
+    };
+    const oauthResponse = await handleOAuthRoute(req, url, oauthConfig);
+    if (oauthResponse) return oauthResponse;
 
     const ADMIN_SECRET = process.env.ADMIN_SECRET;
     if (!ADMIN_SECRET) {
@@ -205,13 +217,19 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
         if (!email || !name) {
           return Response.json({ error: "name and email required" }, { status: 400, headers: corsHeaders });
         }
-        // Check if email already has a key
+        // Check if email already has a key — return it (same security model as signup)
         const existing = await getKeyByEmail(email);
         if (existing) {
+          const month = new Date().toISOString().slice(0, 7);
+          const used = existing.data.usage[month] || 0;
+          const limit = TIER_LIMITS[existing.data.tier] || 10;
           return Response.json({
-            error: "Email already registered",
+            key: existing.key,
             tier: existing.data.tier,
-          }, { status: 409, headers: corsHeaders });
+            limit,
+            used,
+            recovered: true,
+          }, { headers: corsHeaders });
         }
         const key = await createApiKey(name, "free", email);
         await log("info", `New free signup: ${email}`, { name });
@@ -280,9 +298,19 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
 
     // MCP endpoint — accept on /mcp and also on / for POST (Smithery/scanners)
     if (url.pathname === "/mcp" || (url.pathname === "/" && req.method === "POST")) {
-      // --- API key auth ---
+      // --- API key auth (accept from multiple sources for proxy compatibility) ---
+      const bearerToken = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
       const apiKey =
-        req.headers.get("x-api-key") || url.searchParams.get("api_key");
+        req.headers.get("x-api-key") ||
+        req.headers.get("apikey") ||
+        url.searchParams.get("api_key") ||
+        url.searchParams.get("apiKey") ||
+        url.searchParams.get("apikey") ||
+        bearerToken;
+
+      // Debug logging — include query params to diagnose proxy issues
+      const qp = url.search || "none";
+      console.log(`[MCP] ${req.method} ${url.pathname} | auth: ${bearerToken ? "Bearer " + bearerToken.slice(0, 12) + "..." : "none"} | x-api-key: ${req.headers.get("x-api-key") ? "yes" : "no"} | apikey-hdr: ${req.headers.get("apikey") ? "yes" : "no"} | query: ${qp} | session: ${req.headers.get("mcp-session-id") || "none"} | accept: ${req.headers.get("accept") || "none"}`);
 
       // Allow unauthenticated access for discovery methods (initialize, tools/list)
       // so directory scanners (Smithery, etc.) can inspect capabilities.
@@ -307,13 +335,19 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
       }
 
       if (!authResult.valid) {
-        return Response.json(
-          {
+        console.log(`[MCP] AUTH FAILED: ${authResult.error} | key: ${apiKey ? apiKey.slice(0, 12) + "..." : "null"}`);
+        return new Response(JSON.stringify({
             jsonrpc: "2.0",
             error: { code: -32001, message: authResult.error },
             id: null,
-          },
-          { status: 401 }
+          }), {
+            status: 401,
+            headers: {
+              "Content-Type": "application/json",
+              "WWW-Authenticate": `Bearer resource_metadata="https://mcp.ezbizservices.com/.well-known/oauth-protected-resource"`,
+              ...corsHeaders,
+            },
+          }
         );
       }
 
@@ -416,7 +450,6 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
       "/docs": "docs.html",
       "/signup": "signup.html",
       "/pricing": "pricing.html",
-      "/blog/business-intelligence-mcp-server": "blog/business-intelligence-mcp-server.html",
       "/tools/analyze-competitors": "tools/analyze-competitors.html",
       "/tools/competitor-analysis": "tools/competitor-analysis.html",
       "/tools/score-web-presence": "tools/score-web-presence.html",
@@ -426,6 +459,7 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
       "/tools/market-research": "tools/market-research.html",
     };
 
+    // Check static page routes first
     const pageName = PAGE_ROUTES[url.pathname];
     if (pageName) {
       try {
@@ -434,6 +468,29 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
       } catch (err: any) {
         await log("error", `Page load error: ${pageName} - ${err.message}`);
         return new Response("Page not found", { status: 500 });
+      }
+    }
+
+    // Dynamic blog routes: /blog → index, /blog/[slug] → blog post
+    if (url.pathname === "/blog" || url.pathname === "/blog/") {
+      try {
+        const html = await loadPage("blog/index.html");
+        return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+      } catch (err: any) {
+        await log("error", `Blog index error: ${err.message}`);
+        return new Response("Blog not found", { status: 404 });
+      }
+    }
+
+    if (url.pathname.startsWith("/blog/")) {
+      const slug = url.pathname.replace("/blog/", "");
+      if (slug && /^[a-z0-9-]+$/.test(slug)) {
+        try {
+          const html = await loadPage(`blog/${slug}.html`);
+          return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+        } catch (err: any) {
+          return new Response("Post not found", { status: 404 });
+        }
       }
     }
 
