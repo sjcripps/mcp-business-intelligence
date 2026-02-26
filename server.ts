@@ -3,6 +3,7 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
 import { validateApiKey, recordUsage, createApiKey, getKeyByEmail, upgradeKey, getKeyUsage, TIER_LIMITS, TIER_PRICES } from "./lib/auth";
@@ -10,9 +11,14 @@ import type { Tier } from "./lib/auth";
 import { log } from "./lib/logger";
 import { handleOAuthRoute, unauthorizedResponse, type OAuthConfig } from "./lib/oauth";
 import { analyzeCompetitors } from "./tools/competitor-analysis";
-import { scoreWebPresence } from "./tools/web-presence-score";
-import { analyzeReviews } from "./tools/review-analysis";
-import { conductMarketResearch } from "./tools/market-research";
+import { conductIndustryResearch } from "./tools/industry-research";
+import { conductSwotAnalysis } from "./tools/swot-analysis";
+import { analyzeMarketTrends } from "./tools/market-trends";
+// Pro/Business tier tools
+import { buildCustomerPersona } from "./tools/customer-persona";
+import { analyzePricing } from "./tools/pricing-analysis";
+import { analyzeLocalMarket } from "./tools/local-market-analysis";
+import { generateBusinessPlanSection } from "./tools/business-plan-section";
 
 const PORT = parseInt(process.env.MCP_PORT || "4200");
 const BASE_DIR = import.meta.dir;
@@ -31,7 +37,11 @@ const MIME_TYPES: Record<string, string> = {
 
 async function loadPage(name: string): Promise<string> {
   if (pageCache[name]) return pageCache[name];
-  const content = await readFile(join(BASE_DIR, "pages", name), "utf-8");
+  let content = await readFile(join(BASE_DIR, "pages", name), "utf-8");
+  content = content.replace(/style\.css\?v=\d+/g, 'style.css?v=3');
+  if (content.includes('</body>')) {
+    content = content.replace('</body>', '<script src="/static/nav.js"></script>\n</body>');
+  }
   pageCache[name] = content;
   return content;
 }
@@ -57,7 +67,7 @@ async function serveStatic(pathname: string): Promise<Response | null> {
 }
 
 // --- MCP Server factory ---
-function createMcpServer(): McpServer {
+function createMcpServer(tier: string = "free"): McpServer {
   const server = new McpServer({
     name: "ezbiz-business-intelligence",
     version: "1.0.0",
@@ -83,68 +93,159 @@ function createMcpServer(): McpServer {
         .describe("The business's website URL for comparison (e.g., 'https://example.com')"),
     },
     async (params) => {
-      const result = await analyzeCompetitors(params);
+      const result = await analyzeCompetitors({ ...params, tier });
       return { content: [{ type: "text" as const, text: result }] };
     }
   );
 
-  // Tool 2: Web Presence Score
+  // Tool 2: Industry Research
   server.tool(
-    "score_web_presence",
-    "Score a website's online presence (0-100) across SEO, performance, content, social media, and trust signals. Returns detailed breakdown and actionable recommendations.",
-    {
-      url: z.string().describe("Website URL to analyze (e.g., 'https://example.com')"),
-      business_name: z
-        .string()
-        .optional()
-        .describe("Business name to check social media presence and brand mentions"),
-    },
-    async (params) => {
-      const result = await scoreWebPresence(params);
-      return { content: [{ type: "text" as const, text: result }] };
-    }
-  );
-
-  // Tool 3: Review Analysis
-  server.tool(
-    "analyze_reviews",
-    "Analyze a business's online reviews and reputation. Returns sentiment analysis, key themes, strengths, weaknesses, and recommendations for review management.",
-    {
-      business_name: z.string().describe("Business name to search reviews for"),
-      location: z
-        .string()
-        .optional()
-        .describe("Business location for local search (e.g., 'Seattle, WA')"),
-      industry: z
-        .string()
-        .optional()
-        .describe("Industry context for comparison (e.g., 'restaurant', 'dentist')"),
-    },
-    async (params) => {
-      const result = await analyzeReviews(params);
-      return { content: [{ type: "text" as const, text: result }] };
-    }
-  );
-
-  // Tool 4: Market Research
-  server.tool(
-    "market_research",
-    "Conduct market research on an industry. Returns market size, trends, opportunities, challenges, customer segments, competitive landscape, and strategic recommendations.",
+    "industry_research",
+    "Research any industry in depth. Returns market size, growth trends, key players, customer segments, opportunities, challenges, and strategic recommendations.",
     {
       industry: z
         .string()
-        .describe("Industry or market to research (e.g., 'telemedicine', 'EV charging')"),
-      question: z
-        .string()
-        .optional()
-        .describe("Specific question to answer (e.g., 'What is the TAM for residential solar in Texas?')"),
+        .describe("The industry to research (e.g., 'residential HVAC', 'dental practices')"),
       location: z
         .string()
         .optional()
-        .describe("Geographic focus for the research"),
+        .describe("Geographic focus area (e.g., 'Southeast US', 'Mississippi')"),
+      focus_area: z
+        .string()
+        .optional()
+        .describe("Specific research focus (e.g., 'market size', 'customer segments', 'growth drivers')"),
     },
     async (params) => {
-      const result = await conductMarketResearch(params);
+      const result = await conductIndustryResearch({ ...params, tier });
+      return { content: [{ type: "text" as const, text: result }] };
+    }
+  );
+
+  // Tool 3: SWOT Analysis
+  server.tool(
+    "swot_analysis",
+    "Generate a comprehensive SWOT analysis for any business. Evaluates strengths, weaknesses, opportunities, and threats using real-time competitive data.",
+    {
+      business_name: z.string().describe("Name of the business to analyze (e.g., 'Acme Plumbing')"),
+      industry: z
+        .string()
+        .describe("Industry category (e.g., 'residential plumbing')"),
+      location: z
+        .string()
+        .optional()
+        .describe("Business location for local competitive context"),
+      website_url: z
+        .string()
+        .url()
+        .optional()
+        .describe("Business website URL for deeper analysis"),
+    },
+    async (params) => {
+      const result = await conductSwotAnalysis({ ...params, tier });
+      return { content: [{ type: "text" as const, text: result }] };
+    }
+  );
+
+  // Tool 4: Market Trends
+  server.tool(
+    "market_trends",
+    "Track emerging market trends for any industry. Analyzes growth patterns, technology shifts, consumer behavior changes, and competitive dynamics.",
+    {
+      industry: z
+        .string()
+        .describe("The industry to track trends for (e.g., 'home services', 'dental technology')"),
+      location: z
+        .string()
+        .optional()
+        .describe("Geographic focus (e.g., 'United States', 'Southeast US')"),
+      focus_area: z
+        .string()
+        .optional()
+        .describe("Specific trend focus (e.g., 'technology adoption', 'pricing trends', 'consumer behavior')"),
+    },
+    async (params) => {
+      const result = await analyzeMarketTrends({ ...params, tier });
+      return { content: [{ type: "text" as const, text: result }] };
+    }
+  );
+
+  // --- Pro/Business tier tools (visible to all, gated on execution) ---
+  const PRO_TIERS = ["pro", "business"];
+  const upgradeMsg = (toolName: string) =>
+    `🔒 ${toolName} requires a Pro or Business tier subscription.\n\nUpgrade at https://mcp.ezbizservices.com/pricing to unlock advanced tools including customer personas, pricing analysis, local market intelligence, and business plan generation.`;
+
+  // Tool 5: Customer Persona Builder (Pro+)
+  server.tool(
+    "customer_persona",
+    "🔒 [Pro] Build detailed customer personas with demographics, psychographics, buying behavior, and pain points. Uses real market data to create actionable buyer profiles.",
+    {
+      business_name: z.string().describe("Business name (e.g., 'Acme Plumbing')"),
+      industry: z.string().describe("Industry (e.g., 'residential plumbing', 'SaaS')"),
+      product_or_service: z.string().optional().describe("Specific product or service to build personas for"),
+      location: z.string().optional().describe("Target market location"),
+    },
+    async (params) => {
+      if (!PRO_TIERS.includes(tier)) {
+        return { content: [{ type: "text" as const, text: upgradeMsg("Customer Persona Builder") }] };
+      }
+      const result = await buildCustomerPersona({ ...params, tier });
+      return { content: [{ type: "text" as const, text: result }] };
+    }
+  );
+
+  // Tool 6: Pricing Analysis (Pro+)
+  server.tool(
+    "pricing_analysis",
+    "🔒 [Pro] Analyze competitive pricing strategies. Compare market rates, identify pricing opportunities, and get data-backed pricing recommendations.",
+    {
+      industry: z.string().describe("Industry to analyze pricing for"),
+      product_or_service: z.string().describe("Specific product or service to price"),
+      location: z.string().optional().describe("Geographic market for pricing context"),
+      current_price: z.string().optional().describe("Your current price point for comparison"),
+    },
+    async (params) => {
+      if (!PRO_TIERS.includes(tier)) {
+        return { content: [{ type: "text" as const, text: upgradeMsg("Pricing Analysis") }] };
+      }
+      const result = await analyzePricing({ ...params, tier });
+      return { content: [{ type: "text" as const, text: result }] };
+    }
+  );
+
+  // Tool 7: Local Market Analysis (Pro+)
+  server.tool(
+    "local_market_analysis",
+    "🔒 [Pro] Deep local market intelligence. Analyzes competition density, demographics, demand indicators, and growth opportunities in a specific geographic area.",
+    {
+      industry: z.string().describe("Industry to analyze (e.g., 'dental practices', 'HVAC')"),
+      city: z.string().describe("City name (e.g., 'Austin')"),
+      state: z.string().describe("State (e.g., 'TX')"),
+      radius_miles: z.number().optional().describe("Analysis radius in miles (default: 25)"),
+    },
+    async (params) => {
+      if (!PRO_TIERS.includes(tier)) {
+        return { content: [{ type: "text" as const, text: upgradeMsg("Local Market Analysis") }] };
+      }
+      const result = await analyzeLocalMarket({ ...params, tier });
+      return { content: [{ type: "text" as const, text: result }] };
+    }
+  );
+
+  // Tool 8: Business Plan Section Generator (Business only)
+  server.tool(
+    "business_plan_section",
+    "🔒 [Business] Generate professional business plan sections with real market data. Covers executive summary, market analysis, financial projections, operations, and more.",
+    {
+      business_name: z.string().describe("Business name"),
+      industry: z.string().describe("Industry"),
+      section: z.string().describe("Section to generate (e.g., 'executive_summary', 'market_analysis', 'financial_projections', 'operations', 'marketing_strategy')"),
+      context: z.string().optional().describe("Additional context about the business for more tailored output"),
+    },
+    async (params) => {
+      if (tier !== "business") {
+        return { content: [{ type: "text" as const, text: `🔒 Business Plan Section Generator requires a Business tier subscription.\n\nUpgrade at https://mcp.ezbizservices.com/pricing to unlock business plan generation and all other advanced tools.` }] };
+      }
+      const result = await generateBusinessPlanSection({ ...params, tier });
       return { content: [{ type: "text" as const, text: result }] };
     }
   );
@@ -163,8 +264,14 @@ const transports: Record<
   { transport: WebStandardStreamableHTTPServerTransport; apiKey: string }
 > = {};
 
+// --- Stdio transport for MCP inspectors (Glama, CLI clients) ---
+if (process.argv.includes("--stdio")) {
+  const server = createMcpServer("free");
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
 // --- Bun HTTP server (guarded for Smithery scanner compatibility) ---
-if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
+else if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
@@ -298,7 +405,34 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
 
     // MCP endpoint — accept on /mcp and also on / for POST (Smithery/scanners)
     if (url.pathname === "/mcp" || (url.pathname === "/" && req.method === "POST")) {
-      // --- API key auth (accept from multiple sources for proxy compatibility) ---
+      const sessionId = req.headers.get("mcp-session-id");
+
+      // --- GET/DELETE: session-based operations (SSE stream / session close) ---
+      // These are part of the MCP Streamable HTTP protocol. The session was already
+      // authenticated during the initial POST, so no re-auth is needed here.
+      if (req.method === "GET") {
+        if (sessionId && transports[sessionId]) {
+          console.log(`[MCP] GET SSE stream | session: ${sessionId}`);
+          return transports[sessionId].transport.handleRequest(req);
+        }
+        return Response.json(
+          { jsonrpc: "2.0", error: { code: -32000, message: "Bad request: GET requires a valid mcp-session-id. Start with POST." }, id: null },
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      if (req.method === "DELETE") {
+        if (sessionId && transports[sessionId]) {
+          console.log(`[MCP] DELETE session | session: ${sessionId}`);
+          return transports[sessionId].transport.handleRequest(req);
+        }
+        return Response.json(
+          { jsonrpc: "2.0", error: { code: -32000, message: "Session not found" }, id: null },
+          { status: 404, headers: corsHeaders }
+        );
+      }
+
+      // --- POST: API key auth (accept from multiple sources for proxy compatibility) ---
       const bearerToken = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
       const apiKey =
         req.headers.get("x-api-key") ||
@@ -310,29 +444,13 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
 
       // Debug logging — include query params to diagnose proxy issues
       const qp = url.search || "none";
-      console.log(`[MCP] ${req.method} ${url.pathname} | auth: ${bearerToken ? "Bearer " + bearerToken.slice(0, 12) + "..." : "none"} | x-api-key: ${req.headers.get("x-api-key") ? "yes" : "no"} | apikey-hdr: ${req.headers.get("apikey") ? "yes" : "no"} | query: ${qp} | session: ${req.headers.get("mcp-session-id") || "none"} | accept: ${req.headers.get("accept") || "none"}`);
+      console.log(`[MCP] POST ${url.pathname} | auth: ${bearerToken ? "Bearer " + bearerToken.slice(0, 12) + "..." : "none"} | x-api-key: ${req.headers.get("x-api-key") ? "yes" : "no"} | apikey-hdr: ${req.headers.get("apikey") ? "yes" : "no"} | query: ${qp} | session: ${sessionId || "none"} | accept: ${req.headers.get("accept") || "none"}`);
 
-      // Allow unauthenticated access for discovery methods (initialize, tools/list)
-      // so directory scanners (Smithery, etc.) can inspect capabilities.
-      // Auth is still enforced for tools/call (see usage recording below).
-      let authResult: { valid: boolean; error?: string; tier?: string; name?: string } = { valid: false };
-      let isDiscoveryRequest = false;
-
-      if (req.method === "POST" && !apiKey) {
-        try {
-          const cloned = req.clone();
-          const body = await cloned.json();
-          const method = body?.method;
-          if (method === "initialize" || method === "tools/list" || method === "notifications/initialized") {
-            isDiscoveryRequest = true;
-            authResult = { valid: true, tier: "discovery", name: "scanner" };
-          }
-        } catch {}
-      }
-
-      if (!isDiscoveryRequest) {
-        authResult = await validateApiKey(apiKey);
-      }
+      // Auth required on ALL MCP requests (including initialize).
+      // OAuth-capable clients (Smithery, Claude Desktop) will get 401 + WWW-Authenticate
+      // and trigger the OAuth 2.0 + PKCE flow automatically.
+      // Scanners use /.well-known/mcp/server-card.json for tool discovery instead.
+      const authResult = await validateApiKey(apiKey);
 
       if (!authResult.valid) {
         console.log(`[MCP] AUTH FAILED: ${authResult.error} | key: ${apiKey ? apiKey.slice(0, 12) + "..." : "null"}`);
@@ -344,15 +462,13 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
             status: 401,
             headers: {
               "Content-Type": "application/json",
-              "WWW-Authenticate": `Bearer resource_metadata="https://mcp.ezbizservices.com/.well-known/oauth-protected-resource"`,
               ...corsHeaders,
             },
           }
         );
       }
 
-      // Check for existing session
-      const sessionId = req.headers.get("mcp-session-id");
+      // Check for existing session (POST with session ID)
 
       if (sessionId && transports[sessionId]) {
         // Existing session — pass through to its transport
@@ -397,7 +513,7 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
             enableJsonResponse: true,
           });
 
-          const mcpServer = createMcpServer();
+          const mcpServer = createMcpServer(authResult.tier || "free");
           await mcpServer.connect(transport);
 
           // Record init usage
@@ -444,14 +560,55 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
       if (staticRes) return staticRes;
     }
 
+    // --- Short-URL redirects (underscore/slug variants → canonical tool pages) ---
+    const REDIRECTS: Record<string, string> = {
+      "/competitor_analysis": "/tools/analyze-competitors",
+      "/competitor-analysis": "/tools/analyze-competitors",
+      "/analyze_competitors": "/tools/analyze-competitors",
+      "/analyze-competitors": "/tools/analyze-competitors",
+      "/analyze": "/tools",
+      "/industry_research": "/tools/industry-research",
+      "/industry-research": "/tools/industry-research",
+      "/swot_analysis": "/tools/swot-analysis",
+      "/swot-analysis": "/tools/swot-analysis",
+      "/market_trends": "/tools/market-trends",
+      "/market-trends": "/tools/market-trends",
+      // Legacy redirects for old tools
+      "/web_presence": "/tools/score-web-presence",
+      "/web-presence": "/tools/score-web-presence",
+      "/score_web_presence": "/tools/score-web-presence",
+      "/score-web-presence": "/tools/score-web-presence",
+      "/review_analysis": "/tools/analyze-reviews",
+      "/review-analysis": "/tools/analyze-reviews",
+      "/analyze_reviews": "/tools/analyze-reviews",
+      "/analyze-reviews": "/tools/analyze-reviews",
+      "/reviews": "/tools/analyze-reviews",
+      "/market_research": "/tools/market-research",
+      "/market-research": "/tools/market-research",
+    };
+
+    const redirectTarget = REDIRECTS[url.pathname];
+    if (redirectTarget) {
+      return new Response(null, {
+        status: 301,
+        headers: { Location: redirectTarget },
+      });
+    }
+
     // --- Pages ---
     const PAGE_ROUTES: Record<string, string> = {
       "/": "index.html",
       "/docs": "docs.html",
       "/signup": "signup.html",
       "/pricing": "pricing.html",
+      "/tools": "tools/index.html",
+      "/tools/": "tools/index.html",
       "/tools/analyze-competitors": "tools/analyze-competitors.html",
       "/tools/competitor-analysis": "tools/competitor-analysis.html",
+      "/tools/industry-research": "tools/industry-research.html",
+      "/tools/swot-analysis": "tools/swot-analysis.html",
+      "/tools/market-trends": "tools/market-trends.html",
+      // Legacy tool pages (keep for SEO/backlinks)
       "/tools/score-web-presence": "tools/score-web-presence.html",
       "/tools/web-presence-scoring": "tools/web-presence-scoring.html",
       "/tools/analyze-reviews": "tools/analyze-reviews.html",
@@ -498,7 +655,7 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
   },
 });
 
-if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) console.log(`MCP Business Intelligence server running on port ${PORT}`);
+if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN && !process.argv.includes("--stdio")) console.log(`MCP Business Intelligence server running on port ${PORT}`);
 
 // Graceful shutdown
 process.on("SIGINT", async () => {
