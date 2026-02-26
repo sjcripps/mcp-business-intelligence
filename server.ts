@@ -446,27 +446,10 @@ else if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
       const qp = url.search || "none";
       console.log(`[MCP] POST ${url.pathname} | auth: ${bearerToken ? "Bearer " + bearerToken.slice(0, 12) + "..." : "none"} | x-api-key: ${req.headers.get("x-api-key") ? "yes" : "no"} | apikey-hdr: ${req.headers.get("apikey") ? "yes" : "no"} | query: ${qp} | session: ${sessionId || "none"} | accept: ${req.headers.get("accept") || "none"}`);
 
-      // Auth required on ALL MCP requests (including initialize).
-      // OAuth-capable clients (Smithery, Claude Desktop) will get 401 + WWW-Authenticate
-      // and trigger the OAuth 2.0 + PKCE flow automatically.
-      // Scanners use /.well-known/mcp/server-card.json for tool discovery instead.
-      const authResult = await validateApiKey(apiKey);
-
-      if (!authResult.valid) {
-        console.log(`[MCP] AUTH FAILED: ${authResult.error} | key: ${apiKey ? apiKey.slice(0, 12) + "..." : "null"}`);
-        return new Response(JSON.stringify({
-            jsonrpc: "2.0",
-            error: { code: -32001, message: authResult.error },
-            id: null,
-          }), {
-            status: 401,
-            headers: {
-              "Content-Type": "application/json",
-              ...corsHeaders,
-            },
-          }
-        );
-      }
+      // Validate API key (if provided). Initialize is allowed without auth
+      // so MCP inspectors (Glama, etc.) can verify the server and discover tools.
+      // Tool calls still require a valid API key.
+      const authResult = apiKey ? await validateApiKey(apiKey) : { valid: false, tier: "free", error: "No API key" };
 
       // Check for existing session (POST with session ID)
 
@@ -480,10 +463,10 @@ else if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
             const cloned = req.clone();
             const body = await cloned.json();
             if (body?.method === "tools/call") {
-              if (!apiKey) {
+              if (!apiKey || !authResult.valid) {
                 return Response.json(
                   { jsonrpc: "2.0", error: { code: -32001, message: "API key required for tool calls. Get a free key at https://mcp.ezbizservices.com" }, id: body?.id || null },
-                  { status: 401 }
+                  { status: 401, headers: corsHeaders }
                 );
               }
               await recordUsage(apiKey);
@@ -496,14 +479,29 @@ else if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
 
       // New session — only allow POST with initialize
       if (req.method === "POST") {
+        // For non-initialize requests without auth, return 401 with OAuth hint
+        if (!authResult.valid && apiKey) {
+          console.log(`[MCP] AUTH FAILED: ${authResult.error} | key: ${apiKey.slice(0, 12)}...`);
+          return new Response(JSON.stringify({
+              jsonrpc: "2.0",
+              error: { code: -32001, message: authResult.error },
+              id: null,
+            }), {
+              status: 401,
+              headers: { "Content-Type": "application/json", ...corsHeaders },
+            }
+          );
+        }
+
         try {
+          const tier = authResult.valid ? (authResult.tier || "free") : "free";
           const transport = new WebStandardStreamableHTTPServerTransport({
             sessionIdGenerator: () => randomUUID(),
             onsessioninitialized: (sid: string) => {
               transports[sid] = { transport, apiKey: apiKey || "" };
               log("info", `New MCP session: ${sid}`, {
-                tier: authResult.tier,
-                name: authResult.name,
+                tier,
+                name: authResult.valid ? authResult.name : "anonymous",
               });
             },
             onsessionclosed: (sid: string) => {
@@ -513,11 +511,11 @@ else if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
             enableJsonResponse: true,
           });
 
-          const mcpServer = createMcpServer(authResult.tier || "free");
+          const mcpServer = createMcpServer(tier);
           await mcpServer.connect(transport);
 
-          // Record init usage
-          if (apiKey) await recordUsage(apiKey);
+          // Record init usage only for authenticated sessions
+          if (apiKey && authResult.valid) await recordUsage(apiKey);
 
           return transport.handleRequest(req);
         } catch (err: any) {
