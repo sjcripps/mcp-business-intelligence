@@ -6,6 +6,10 @@
 
 AI-powered business intelligence tools via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). Give your AI assistant the ability to research competitors, score websites, analyze reviews, and conduct market research — all in real time.
 
+<a href="https://glama.ai/mcp/servers/@ezbiz-services/biz-intelligence">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@ezbiz-services/biz-intelligence/badge" alt="Biz Intelligence MCP server" />
+</a>
+
 ## Tools
 
 | Tool | Description |
